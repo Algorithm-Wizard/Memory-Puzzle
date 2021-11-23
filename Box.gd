@@ -2,80 +2,90 @@ extends Control
 
 class_name Icon
 
+signal clicked(Icon)
+
 export var boxColor := Color.white
-export var highlightColor := Color.blue
+export var highlightColor := Color.darkblue
+export var bgColor := Color.black
+export var speed := 4
 
-const NONE := -1
+const NUMSHAPES := 9
+enum {DONUT, SQUARE, DIAMOND, OVAL, UP, DOWN, LINES, PLUS, TIMES}
 
-const NUMSHAPES := 7
-enum {DONUT, SQUARE, DIAMOND, OVAL, UP, DOWN, LINES}
+const Colors := [Color.red, Color.green, Color.blue, Color.yellow, Color.orange, Color.purple, 
+	Color.cyan, Color.hotpink, Color.slategray]
 
-const Colors := [Color.red, Color.green, Color.blue, Color.yellow, Color.orange, Color.purple, Color.cyan, Color.hotpink, Color.darkgreen, Color.darkred]
-
-var coverage := 0.0
-var shape := NONE
+var coverage := 1.0
+var shape := -1
 var color := Color.white
-var bgColor := Color.black
 var hovered := false
+var covered := true
 
-func _ready():
-	connect("mouse_entered", self, "mouseEntered")
-	connect("mouse_exited", self, "mouseExited")
+func hide():
+	hovered = false
+	.hide()
+
+func _process(delta):
+	if covered and coverage < 1.0:
+		coverage += speed * delta
+		update()
+	elif not covered and coverage > 0.0:
+		coverage -= speed * delta
+		update()
 	
 func _draw():
-	if true:#hovered:
+	if hovered:
 		draw_rect(Rect2(Vector2(-4, -4), rect_size + Vector2(8, 8)), highlightColor)
 		draw_rect(Rect2(Vector2.ZERO, rect_size), bgColor)
 	if (coverage >= 1.0):
-		draw_rect(Rect2(Vector2.ZERO,rect_size), boxColor)
+		draw_rect(Rect2(Vector2.ZERO, rect_size), boxColor)
 	elif (coverage <= 0.0):
 		drawIcon()
 	else:
 		drawIcon()
 		draw_rect(Rect2((1.0 - coverage) * rect_size.x, 0, coverage * rect_size.x, rect_size.y), boxColor)
 
+func loc(x :float, y :float) -> Vector2:
+		return Vector2(x, y) * rect_size * .1
+
 func drawIcon():
 	var boxSize := min(rect_size.x, rect_size.y)
-	var wd := Vector2(rect_size.x, 0)
-	var ht := Vector2(0, rect_size.y)
-	var middle := rect_size / 2
-	var high := Vector2(rect_size.x / 2, rect_size.y * .33)
-	var low := Vector2(rect_size.x / 2, rect_size.y * .66)
-	var midTop := wd * .5 + ht * .1
-	var midBot := Vector2(middle.x, rect_size.y)
-	var midRgt := Vector2(rect_size.x, middle.y)
-	var higRgt := Vector2(rect_size.x, high.y)
-	var lowRgt := Vector2(rect_size.x, low.y)
-	var midLft := Vector2(0, middle.y)
-	var higLft := Vector2(0, high.y)
-	var lowLft := Vector2(0, low.y)
+	draw_rect(Rect2(loc(0,0),loc(10,10)), bgColor)
 	match shape:
 		DONUT:
-			draw_circle(middle, boxSize * .4, color)
-			draw_circle(middle, boxSize * .2, bgColor)
+			draw_circle(loc(5,5), boxSize * .4, color)
+			draw_circle(loc(5,5), boxSize * .2, bgColor)
 		DIAMOND:
-			draw_colored_polygon([midTop, midRgt, wd*.5+ht*.9, midLft], color)
+			draw_colored_polygon([loc(5,1), loc(9,5), loc(5,9), loc(1,5)], color)
 		SQUARE:
-			draw_rect(Rect2(Vector2.ZERO, rect_size), color)
+			draw_rect(Rect2(loc(2,2), loc(6,6)), color)
 		OVAL:
 			draw_set_transform(Vector2(rect_size.x * .1, rect_size.y * .25), 0, Vector2(.8, .5))
-			draw_circle(middle, boxSize / 2, color)
+			draw_circle(loc(5,5), boxSize / 2, color)
+			draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 		UP:
-			draw_set_transform(Vector2(rect_size.x * .1, rect_size.y * .3), 0.0, Vector2(.9, .9))
-			draw_colored_polygon([midTop, higRgt, lowRgt, high, lowLft, higLft], color)
+			draw_colored_polygon([loc(5,2), loc(9,5), loc(9,8), loc(5,5), loc(1,8), loc(1,5)], color)
 		DOWN:
-			draw_set_transform(Vector2(rect_size.x * .1, -rect_size.y * .2), 0.0, Vector2(.9, .9))
-			draw_colored_polygon([midBot, lowLft, higLft, low, higRgt, lowRgt], color)
+			draw_colored_polygon([loc(5,5), loc(9,2), loc(9,5), loc(5,8), loc(1,5), loc(1,2)], color)
 		LINES:
-			draw_set_transform(Vector2(rect_size.x * .1, 0), 0.0, Vector2(.8, .8))
-			draw_rect(Rect2(0, rect_size.y * .25, rect_size.x, boxSize / 4), color)
-			draw_rect(Rect2(0, rect_size.y * .75, rect_size.x, boxSize / 4), color)
-	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+			draw_rect(Rect2(loc(1,2), loc(8,2)), color)
+			draw_rect(Rect2(loc(1,6), loc(8,2)), color)
+		PLUS:
+			draw_rect(Rect2(loc(4,1), loc(2,8)), color)
+			draw_rect(Rect2(loc(1,4), loc(8,2)), color)
+		TIMES:
+			draw_colored_polygon([loc(2,1), loc(9,8), loc(8,9), loc(1,2)], color)
+			draw_colored_polygon([loc(8,1), loc(9,2), loc(2,9), loc(1,8)], color)
 
-func mouseEntered():
+func _on_Box_mouse_entered():
 	hovered = true
 	update()
 
-func mouseExited():
+func _on_Box_mouse_exited():
 	hovered = false
 	update()
+
+func _on_Box_gui_input(event: InputEvent):
+	if event is InputEventMouseButton:
+		if event.pressed:
+			emit_signal("clicked", self)
